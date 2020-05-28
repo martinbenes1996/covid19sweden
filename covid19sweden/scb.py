@@ -95,25 +95,103 @@ class Deaths:
         unknown_2020["year"] = 2020
         # result
         return pd.concat([data_2019, data_2020]), pd.concat([unknown_2019, unknown_2020])
+    
     def county_18to20_day(self): # table 3
+        """Deaths on county level from 2018 to 2020.
+        
+        Returns:
+            data (dataframe): daily county records from 2018 - 2020
+            total (dataframe): total county records from 2018 - 2020
+            unknown (dataframe): unknown records (not assigned to days)
+        """
         # clean excel table
         sheet = self._wb["Tabell 3"]
+        sheet.delete_rows(889,500)
         sheet.delete_rows(1,9)
-        sheet.delete_cols(20,4)
+        sheet.delete_cols(24,5)
         # parse to pandas
         data = pd.DataFrame(sheet.values)
-        print(data)
+        data = data.replace({'..': 0})
+        # columns
+        data.columns = ["date","year","SE010","SE021","SE022","SE023",
+                        "SE091","SE092","SE093","SE094","SE041","SE044",
+                        "SE0A1","SE0A2","SE061","SE024","SE025","SE062",
+                        "SE063","SE071","SE072","SE081","SE082"]
+        
+        # separate
+        unknown = data.iloc[-6:-3,:]
+        total = data.iloc[-3:,:]
+        data = data.iloc[:-6,:]
+        # parse date
+        locale.setlocale(locale.LC_TIME, "sv_SE")
+        data["date"] = (data["date"]+" "+data["year"].apply(lambda x: str(x))).apply(self._parse_date)
+        data = data.sort_values(['date'], ascending=[1]).reset_index(drop = True).drop(["year"], axis=1)
+        # parse total
+        total["date"] = total["year"].apply(lambda x: datetime.strptime(str(x), "%Y"))
+        total = total.drop(["year"], axis=1).reset_index(drop = True)
+        # parse unknown
+        unknown["date"] = unknown["year"].apply(lambda x: datetime.strptime(str(x), "%Y"))
+        unknown = unknown.drop(["year"], axis=1).reset_index(drop = True)
+        
+        return data, total, unknown
+        
     def municipality_18to20_10days(self): # table 4
-        pass
+        # clean excel table
+        sheet = self._wb["Tabell 4"]
+        #sheet.delete_rows(889,500)
+        sheet.delete_rows(1,12)
+        sheet.delete_cols(41,3)
+        # parse to pandas
+        data = pd.DataFrame(sheet.values)
+        data = data.replace({'..': 0})
+        
+        data.columns = ["year","code","municipality","total",*[f"{month}-{day+1};{month}-{day+10}" for month in range(1,13) for day in range(0,21,10) ], "unknown"]
+        data = pd.melt(data, id_vars = ['date'],
+                       value_vars = ['2015','2016','2017','2018','2019','2020'],
+                       var_name = 'year', value_name = 'deaths')
+        print(data)
     def country_15to20_week_sex(self): # table 5
-        pass
+        # clean excel table
+        sheet = self._wb["Tabell 5"]
+        #sheet.delete_rows(889,500)
+        #sheet.delete_rows(1,12)
+        #sheet.delete_cols(41,3)
+        # parse to pandas
+        data = pd.DataFrame(sheet.values)
+        data = data.replace({'..': 0})
+        print(data)
     def county_15to20_week(self): # table 6
-        pass
+        # clean excel table
+        sheet = self._wb["Tabell 6"]
+        #sheet.delete_rows(889,500)
+        #sheet.delete_rows(1,12)
+        #sheet.delete_cols(41,3)
+        # parse to pandas
+        data = pd.DataFrame(sheet.values)
+        data = data.replace({'..': 0})
+        print(data)
     def country_15to20_week_age_sex(self): # table 7
-        pass
+        # clean excel table
+        sheet = self._wb["Tabell 7"]
+        #sheet.delete_rows(889,500)
+        #sheet.delete_rows(1,12)
+        #sheet.delete_cols(41,3)
+        # parse to pandas
+        data = pd.DataFrame(sheet.values)
+        data = data.replace({'..': 0})
+        print(data)
     def country_20_day_release(self): # table 8
-        pass
+        # clean excel table
+        sheet = self._wb["Tabell 8"]
+        #sheet.delete_rows(889,500)
+        #sheet.delete_rows(1,12)
+        #sheet.delete_cols(41,3)
+        # parse to pandas
+        data = pd.DataFrame(sheet.values)
+        data = data.replace({'..': 0})
+        print(data)
 
 if __name__ == "__main__":
     d = Deaths()
-    d.county_18to20_day()
+    d.country_20_day_release()
+    
