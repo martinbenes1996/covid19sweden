@@ -162,6 +162,11 @@ class Deaths:
         return data,total,unknown
     
     def country_15to20_week_sex(self): # table 5
+        """Deaths on country level from 2015 to 2020 by week by sex.
+        
+        Returns:
+            
+        """
         # parse table
         sheet = self._wb["Tabell 5"]
         data = pd.DataFrame(sheet.values)
@@ -170,24 +175,51 @@ class Deaths:
         years = [str(y) for y in range(2015,2021)]
         data.columns = ["week",*years, "avg", "empty1", *["F"+y for y in [*years,"avg"]], "empty2", *["M"+y for y in [*years,"avg"]]]
         data = data.drop(["empty1","empty2"], axis=1)
+        # wide to long
         print(data)
+        # todo
+        
     def county_15to20_week(self): # table 6
-        # clean excel table
+        """Deaths on county level from 2015 to 2020 by week
+        
+        Returns:
+            data (dataframe): daily municipality records from 2018 - 2020
+            total (dataframe): total municipality records from 2018 - 2020
+            unknown (dataframe): unknown records (not assigned to days)
+        """
+        # parse table
         sheet = self._wb["Tabell 6"]
-        #sheet.delete_rows(889,500)
-        #sheet.delete_rows(1,12)
-        #sheet.delete_cols(41,3)
-        # parse to pandas
-        data = pd.DataFrame(sheet.values)
-        data = data.replace({'..': 0})
-        print(data)
+        df = pd.DataFrame(sheet.values)
+        df = df.replace({'..': 0})
+        data = df.iloc[12:66,:45]
+        # parse counties
+        counties = df.iloc[8,3:]
+        counties = counties[~counties.isnull()]
+        # columns
+        county_columns = []
+        for c in counties:
+            county_columns.append(f"avg1519_{c}")
+            county_columns.append(f"2020_{c}")
+        data.columns = ["week","avg1519","2020",*county_columns]
+        # parse unknown
+        unknown = data.iloc[-1:,1:].reset_index(drop = True)
+        data = data.iloc[:-1,:].reset_index(drop = True)
+        # parse total
+        total = data[["week","avg1519","2020"]]
+        data = data.drop(["avg1519","2020"], axis=1)
+        
+        return data, total, unknown
+    
     def country_15to20_week_age_sex(self): # table 7
-        # clean excel table
+        """Deaths on county level from 2015 to 2020 by week by age by sex.
+        
+        Returns:
+            data (dataframe): daily municipality records from 2018 - 2020
+            total (dataframe): total municipality records from 2018 - 2020
+            unknown (dataframe): unknown records (not assigned to days)
+        """
+        # parse table
         sheet = self._wb["Tabell 7"]
-        #sheet.delete_rows(889,500)
-        #sheet.delete_rows(3,12)
-        #sheet.delete_cols(41,3)
-        # parse to pandas
         data = pd.DataFrame(sheet.values)
         data = data.replace({'..': 0})
         print(data)
@@ -204,5 +236,5 @@ class Deaths:
 
 if __name__ == "__main__":
     d = Deaths(offline = True)
-    d.country_15to20_week_sex()
+    d.country_15to20_week_age_sex()
     
