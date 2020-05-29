@@ -222,6 +222,7 @@ class Deaths:
         sheet = self._wb["Tabell 7"]
         data = pd.DataFrame(sheet.values)
         data = data.replace({'..': 0})
+        data = data.iloc[9:-3,:19]
         print(data)
     def country_20_day_release(self): # table 8
         # clean excel table
