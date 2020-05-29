@@ -133,26 +133,43 @@ class Deaths:
         return data, total, unknown
         
     def municipality_18to20_10days(self): # table 4
+        """Deaths on county level from 2018 to 2020.
+        
+        Returns:
+            data (dataframe): daily municipality records from 2018 - 2020
+            total (dataframe): total municipality records from 2018 - 2020
+            unknown (dataframe): unknown records (not assigned to days)
+        """
         # parse table
         sheet = self._wb["Tabell 4"]
         data = pd.DataFrame(sheet.values)
         data = data.replace({'..': 0})
         data = data.iloc[12:,:-3]
-        tendays = [f"{month}-{day+1};{month}-{day+10}"
+        tendays = [f"{month}-{day+1}"
                    for month in range(1,13) for day in range(0,21,10) ]
         data.columns = ["year","code","municipality","total",*tendays,"unknown"]
-        #data = pd.melt(data, id_vars = ['date'],var_name = 'year', value_name = 'deaths',
-        #               value_vars = ['2015','2016','2017','2018','2019','2020'])
-        print(data)
+        # total/unknown per municipality
+        aggregated = data.loc[:,["year","code","municipality","total","unknown"]]
+        aggregated["date"] = aggregated["year"].apply(lambda x: datetime.strptime(str(x), "%Y"))
+        total = aggregated.drop(["year","unknown"], axis=1)
+        unknown = aggregated.drop(["year","total"], axis=1)
+        # wide to long
+        data = pd.melt(data, id_vars = ['year','code','municipality'],var_name = 'date', value_name = 'deaths',
+                       value_vars = tendays)
+        data['date'] = (data['year'] + "-" + data['date']).apply(lambda x: datetime.strptime(x, "%Y-%m-%d"))
+        data = data.drop("year", axis=1)
+        
+        return data,total,unknown
+    
     def country_15to20_week_sex(self): # table 5
-        # clean excel table
+        # parse table
         sheet = self._wb["Tabell 5"]
-        #sheet.delete_rows(889,500)
-        #sheet.delete_rows(1,12)
-        #sheet.delete_cols(41,3)
-        # parse to pandas
         data = pd.DataFrame(sheet.values)
         data = data.replace({'..': 0})
+        data = data.iloc[11:64,:24].reset_index(drop = True)
+        years = [str(y) for y in range(2015,2021)]
+        data.columns = ["week",*years, "avg", "empty1", *["F"+y for y in [*years,"avg"]], "empty2", *["M"+y for y in [*years,"avg"]]]
+        data = data.drop(["empty1","empty2"], axis=1)
         print(data)
     def county_15to20_week(self): # table 6
         # clean excel table
@@ -187,5 +204,5 @@ class Deaths:
 
 if __name__ == "__main__":
     d = Deaths(offline = True)
-    d.municipality_18to20_10days()
+    d.country_15to20_week_sex()
     
