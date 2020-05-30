@@ -86,7 +86,7 @@ class Deaths:
         sheet = self._wb["Tabell 2"]
         data = pd.DataFrame(sheet.values)
         data_2019 = data.iloc[8:,:10]
-        data_2020 = pd.concat([data.iloc[8:,0], data.iloc[8:,10:20]], axis=1)
+        data_2020 = pd.concat([data.iloc[8:,0], data.iloc[8:,10:19]], axis=1)
         data_2020.columns = data_2019.columns = ["date","total",
                                                  "M0-64","M65-79","M80-89","M90+",
                                                  "F0-64","F65-79","F80-89","F90+"]
@@ -256,7 +256,7 @@ class Deaths:
                        var_name = 'release', value_name = 'deaths', value_vars = dates)
         data["release"] = data["release"].apply(lambda x: datetime.strptime(x, "%Y-%m-%d"))
         
-        print(unknown)
+        return data,unknown
 
 if __name__ == "__main__":
     d = Deaths(offline = True)
