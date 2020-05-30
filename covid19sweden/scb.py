@@ -154,8 +154,8 @@ class Deaths:
         total = aggregated.drop(["year","unknown"], axis=1)
         unknown = aggregated.drop(["year","total"], axis=1)
         # wide to long
-        data = pd.melt(data, id_vars = ['year','code','municipality'],var_name = 'date', value_name = 'deaths',
-                       value_vars = tendays)
+        data = pd.melt(data, id_vars = ['year','code','municipality'],
+                       var_name = 'date', value_name = 'deaths', value_vars = tendays)
         data['date'] = (data['year'] + "-" + data['date']).apply(lambda x: datetime.strptime(x, "%Y-%m-%d"))
         data = data.drop("year", axis=1)
         
@@ -165,7 +165,7 @@ class Deaths:
         """Deaths on country level from 2015 to 2020 by week by sex.
         
         Returns:
-            
+            data (dataframe): daily municipality records from 2018 - 2020
         """
         # parse table
         sheet = self._wb["Tabell 5"]
@@ -175,9 +175,8 @@ class Deaths:
         years = [str(y) for y in range(2015,2021)]
         data.columns = ["week",*years, "avg", "empty1", *["F"+y for y in [*years,"avg"]], "empty2", *["M"+y for y in [*years,"avg"]]]
         data = data.drop(["empty1","empty2"], axis=1)
-        # wide to long
-        print(data)
-        # todo
+        
+        return data
         
     def county_15to20_week(self): # table 6
         """Deaths on county level from 2015 to 2020 by week
@@ -214,28 +213,53 @@ class Deaths:
         """Deaths on county level from 2015 to 2020 by week by age by sex.
         
         Returns:
-            data (dataframe): daily municipality records from 2018 - 2020
-            total (dataframe): total municipality records from 2018 - 2020
-            unknown (dataframe): unknown records (not assigned to days)
+            data (dataframe): weekly records per gender and age group for 2015 - 2019 (average) and in 2020
+            total (dataframe): total weekly deaths (throughout genders and ages) in 2015 - 2019 (average) and 2020
+            unknown (dataframe): unknown records (not assigned to weeks)
         """
         # parse table
         sheet = self._wb["Tabell 7"]
         data = pd.DataFrame(sheet.values)
         data = data.replace({'..': 0})
-        data = data.iloc[9:-3,:19]
-        print(data)
+        data = data.iloc[9:-3,:-3].reset_index(drop = True)
+        # columns
+        age = ["0-64","65-79","80-89","90+"]
+        gender = [g + "_" + a for g in ["M","F"] for a in age]
+        cols1519 = [y + "_" + g for y in ["2015-2019"] for g in gender ]
+        cols20 = [y + "_" + g for y in ["2020"] for g in gender ]
+        data.columns = ["week", "2015-2019", *cols1519, "2020", *cols20]
+        # unknown, total
+        unknown = data.iloc[-1:, 1:]
+        total = data[["week","2015-2019","2020"]]
+        data = data.iloc[:-1,:].drop(["2015-2019","2020"], axis=1)
+
+        return data, total, unknown
+    
     def country_20_day_release(self): # table 8
-        # clean excel table
+        # parse date
         sheet = self._wb["Tabell 8"]
-        #sheet.delete_rows(889,500)
-        #sheet.delete_rows(1,12)
-        #sheet.delete_cols(41,3)
-        # parse to pandas
         data = pd.DataFrame(sheet.values)
-        data = data.replace({'..': 0})
-        print(data)
+        data = data.replace({'..': 0}).replace({None: 0})
+        data = data.iloc[6:,:].reset_index(drop = True)
+        # columns
+        self._start_parsing_date()
+        dates = (data.iloc[0,1:] + " 2020").apply(self._parse_date).apply(lambda c: c.strftime("%Y-%m-%d")).tolist()
+        data = data.iloc[1:,:].reset_index(drop = True)
+        data.columns = ["date", *dates]
+        # unknown
+        unknown = data.iloc[-1:,1:].reset_index(drop = True)
+        unknown = pd.melt(unknown, var_name = 'release', value_name = 'deaths', value_vars = dates)
+        data = data.iloc[:-1,:].reset_index(drop = True)
+        # parse dates
+        data["date"] = (data["date"] + " 2020").apply(self._parse_date)
+        data = pd.melt(data, id_vars = ['date'],
+                       var_name = 'release', value_name = 'deaths', value_vars = dates)
+        data["release"] = data["release"].apply(lambda x: datetime.strptime(x, "%Y-%m-%d"))
+        
+        print(unknown)
 
 if __name__ == "__main__":
     d = Deaths(offline = True)
-    d.country_15to20_week_age_sex()
+    data = d.country_15to20_week_sex()
+    print(data)
     
