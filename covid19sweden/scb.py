@@ -10,9 +10,7 @@ import requests
 
 
 class Deaths:
-    # TODO
-    _url = 'https://scb.se/contentassets/edc2b33f85ad415d8e7909002253ed84/2020-05-22-preliminar_statistik_over_doda_inkl_eng.xlsx'    
-    
+    _url = 'https://www.scb.se/hitta-statistik/statistik-efter-amne/befolkning/befolkningens-sammansattning/befolkningsstatistik/pong/tabell-och-diagram/preliminar-statistik-over-doda/' 
     def _start_parsing_date(self):
         locale.setlocale(locale.LC_TIME, "sv_SE")
         self._leap_records, self._unknown_death_date = [], []
@@ -26,12 +24,9 @@ class Deaths:
                 self._unknown_death_date.append(d)
             else: raise
             return d
-    def __init__(self, offline = False):
-        if not offline:
-            u = requests.get(self._url)
-            fd = BytesIO(u.content)
-        else:
-            fd = "2020-05-22-preliminar_statistik_over_doda_inkl_eng.xlsx"
+    def __init__(self):
+        u = requests.get(self._url)
+        fd = BytesIO(u.content)
         self._wb = pyxl.load_workbook( fd )
         self._leap_records, self._unknown_death_date = [], []
     def get_xlsx_input(self):
