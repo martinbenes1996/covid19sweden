@@ -21,14 +21,13 @@ def deaths(weekly = False, level = 1, per_gender_age = False, verbose = True, al
             data,avg,unk = d.country_15to20_day()
         # by release (alt = True)
         else:
-            data,unk = d.country_20_day_release()
+            data,avg,unk = d.country_20_day_release()
             avg = None
     
     # daily country deaths, per gender and age
     elif not weekly and level == 1 and per_gender_age:
         total_used = False
-        data,unk = d.country_19to20_day_sex_age()
-        avg = None
+        data,avg,unk = d.country_19to20_day_sex_age()
     
     # daily regional deaths
     elif not weekly and level == 2:
@@ -53,8 +52,7 @@ def deaths(weekly = False, level = 1, per_gender_age = False, verbose = True, al
             data,total,unk = d.country_15to20_week_age_sex()
         # per age
         else: 
-            data = d.country_15to20_week_sex()
-            total,unk = None,None
+            data,total,unk = d.country_15to20_week_sex()
     
     # weekly regional level
     elif weekly and level == 2:

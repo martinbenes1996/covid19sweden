@@ -34,7 +34,8 @@ class Deaths:
             fd = "2020-05-22-preliminar_statistik_over_doda_inkl_eng.xlsx"
         self._wb = pyxl.load_workbook( fd )
         self._leap_records, self._unknown_death_date = [], []
-            
+    def get_xlsx_input(self):
+        return self._wb
         
     def country_15to20_day(self): # table 1
         """Deaths on country level from 2015 to 2020 per day.
@@ -100,7 +101,7 @@ class Deaths:
         unknown_2019["year"] = 2019
         unknown_2020["year"] = 2020
         # result
-        return pd.concat([data_2019, data_2020]), pd.concat([unknown_2019, unknown_2020])
+        return pd.concat([data_2019, data_2020]), None, pd.concat([unknown_2019, unknown_2020])
     
     def county_18to20_day(self): # table 3
         """Deaths on county level from 2018 to 2020.
@@ -176,7 +177,7 @@ class Deaths:
         data.columns = ["week",*years, "avg", "empty1", *["F"+y for y in [*years,"avg"]], "empty2", *["M"+y for y in [*years,"avg"]]]
         data = data.drop(["empty1","empty2"], axis=1)
         
-        return data
+        return data, None, None
         
     def county_15to20_week(self): # table 6
         """Deaths on county level from 2015 to 2020 by week
@@ -256,7 +257,7 @@ class Deaths:
                        var_name = 'release', value_name = 'deaths', value_vars = dates)
         data["release"] = data["release"].apply(lambda x: datetime.strptime(x, "%Y-%m-%d"))
         
-        return data,unknown
+        return data,None,unknown
 
 if __name__ == "__main__":
     d = Deaths(offline = True)

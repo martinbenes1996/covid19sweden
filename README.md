@@ -110,6 +110,27 @@ Implicit parameter change is announced on stdout. It can be switched off by sett
 
 Sometimes multiple datasets with slight difference (or two conversions) are available. This is announced on stdout. Choosing an alternative data is done with `alt = True`.
 
+## Commit
+
+With a single call all the data handlers are called and their outputs as well as common input (xlsx file) is stored. *Commit* is stored directory `commit_YYMMDD` (in *cwd*) unless explicitly specified.
+
+```python
+import covid19sweden as SWE
+SWE.commit() # store all files
+```
+
+Explicit specification of directory is done with
+
+```python
+SWE.commit("/var/latest_data")
+```
+
+Function will try to create the folder. It fails on existing files of the same name. Overwriting must be enabled
+
+```python
+SWE.commit("/var/latest_data", overwrite = True)
+```
+
 ## Contribution
 
 Developed by [Martin Benes](https://github.com/martinbenes1996).
