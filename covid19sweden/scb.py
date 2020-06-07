@@ -26,11 +26,19 @@ class Deaths:
             return d
     def __init__(self):
         u = requests.get(self._url)
+        self._request_timestamp = datetime.now()
         fd = BytesIO(u.content)
         self._wb = pyxl.load_workbook( fd )
         self._leap_records, self._unknown_death_date = [], []
+        self._filelocation = u.history[0].headers['Location']
     def get_xlsx_input(self):
         return self._wb
+    def get_file_location(self):
+        return f'https://www.scb.se{self._filelocation}'
+    def get_file_name(self):
+        return self._filelocation.split('/')[-1]
+    def get_timestamp(self):
+        return self._request_timestamp
         
     def country_15to20_day(self): # table 1
         """Deaths on country level from 2015 to 2020 per day.
