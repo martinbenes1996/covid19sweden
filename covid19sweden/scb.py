@@ -8,12 +8,21 @@ import openpyxl as pyxl
 import pandas as pd
 import requests
 
-
+class localeSetting:
+    def __init__(self, a1 = None, a2 = None):
+        if a2 is None:
+            self._category = locale.LC_ALL
+            self._setting = a1
+        else:
+            self._category = a1
+            self._setting = a2
+    def __enter__(self):
+        self._original_locale = locale.getlocale(self._category)
+        locale.setlocale(self._category, self._setting)
+    def __exit__(self, *args, **kwargs):
+        locale.setlocale(self._category, self._original_locale)
 class Deaths:
     _url = 'https://www.scb.se/hitta-statistik/statistik-efter-amne/befolkning/befolkningens-sammansattning/befolkningsstatistik/pong/tabell-och-diagram/preliminar-statistik-over-doda/' 
-    def _start_parsing_date(self):
-        locale.setlocale(locale.LC_TIME, "sv_SE")
-        self._leap_records, self._unknown_death_date = [], []
     def _parse_date(self, d):
         try:
             return datetime.strptime(d, "%d %B %Y")
@@ -62,8 +71,9 @@ class Deaths:
         data,unk = data[:-1],data[-1:]
         # parse date
         data['date'] = data['date'] + ' ' + data['year']
-        self._start_parsing_date()
-        data["date"] = data["date"].apply(self._parse_date)
+        self._leap_records, self._unknown_death_date = [], []
+        with localeSetting(locale.LC_TIME, "sv_SE.UTF-8"):
+            data["date"] = data["date"].apply(self._parse_date)
         # unknown deaths
         unk = data[data['date'].isin(self._unknown_death_date)]
         unk = unk.drop(['date'], axis=1).reset_index(drop = True)
@@ -73,8 +83,9 @@ class Deaths:
         data = data.drop(["year"], axis=1)
         # average
         average["date"] += " 2020"
-        self._start_parsing_date()
-        average["date"] = average["date"].apply(self._parse_date)
+        self._leap_records, self._unknown_death_date = [], []
+        with localeSetting(locale.LC_TIME, "sv_SE.UTF-8"):
+            average["date"] = average["date"].apply(self._parse_date)
         average = average[~average['date'].isin(self._unknown_death_date)]
         
         return data, average, unk
@@ -99,8 +110,10 @@ class Deaths:
         unknown_2020 = data_2020.iloc[-1:,1:]
         # parse date
         self._start_parsing_date()
-        data_2019["date"] = (data_2019["date"] + " 2019").apply(self._parse_date)
-        data_2020["date"] = (data_2020["date"] + " 2020").apply(self._parse_date)
+        self._leap_records, self._unknown_death_date = [], []
+        with localeSetting(locale.LC_TIME, "sv_SE.UTF-8"):
+            data_2019["date"] = (data_2019["date"] + " 2019").apply(self._parse_date)
+            data_2020["date"] = (data_2020["date"] + " 2020").apply(self._parse_date)
         unknown_2019["year"] = 2019
         unknown_2020["year"] = 2020
         # result
@@ -127,7 +140,9 @@ class Deaths:
         total = data.iloc[-3:,:]
         data = data.iloc[:-6,:]
         self._start_parsing_date()
-        data["date"] = (data["date"]+" "+data["year"].apply(lambda x: str(x))).apply(self._parse_date)
+        self._leap_records, self._unknown_death_date = [], []
+        with localeSetting(locale.LC_TIME, "sv_SE.UTF-8"):
+            data["date"] = (data["date"]+" "+data["year"].apply(lambda x: str(x))).apply(self._parse_date)
         data = data.sort_values(['date'], ascending=[1]).reset_index(drop = True).drop(["year"], axis=1)
         total["date"] = total["year"].apply(lambda x: datetime.strptime(str(x), "%Y"))
         total = total.drop(["year"], axis=1).reset_index(drop = True)
@@ -246,8 +261,9 @@ class Deaths:
         data = data.replace({'..': 0}).replace({None: 0})
         data = data.iloc[6:,:].reset_index(drop = True)
         # columns
-        self._start_parsing_date()
-        dates = (data.iloc[0,1:] + " 2020").apply(self._parse_date).apply(lambda c: c.strftime("%Y-%m-%d")).tolist()
+        self._leap_records, self._unknown_death_date = [], []
+        with localeSetting(locale.LC_TIME, "sv_SE.UTF-8"):
+            dates = (data.iloc[0,1:] + " 2020").apply(self._parse_date).apply(lambda c: c.strftime("%Y-%m-%d")).tolist()
         data = data.iloc[1:,:].reset_index(drop = True)
         data.columns = ["date", *dates]
         # unknown
