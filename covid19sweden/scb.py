@@ -18,7 +18,13 @@ class localeSetting:
             self._setting = a2
     def __enter__(self):
         self._original_locale = locale.getlocale(self._category)
-        locale.setlocale(self._category, self._setting)
+        for s in [self._setting, self._setting + ".utf8", self._setting + ".UTF-8"]:
+            try:
+                locale.setlocale(self._category, s)
+                break
+            except: pass
+        else:
+            raise locale.Error("unsupported locale setting")
     def __exit__(self, *args, **kwargs):
         locale.setlocale(self._category, self._original_locale)
 class Deaths:
@@ -74,7 +80,7 @@ class Deaths:
         # parse date
         data['date'] = data['date'] + ' ' + data['year']
         self._leap_records, self._unknown_death_date = [], []
-        with localeSetting(locale.LC_TIME, "sv_SE.UTF-8"):
+        with localeSetting(locale.LC_TIME, "sv_SE"):
             data["date"] = data["date"].apply(self._parse_date)
         # unknown deaths
         unk = data[data['date'].isin(self._unknown_death_date)]
@@ -87,7 +93,7 @@ class Deaths:
         # average
         average["date"] += " 2020"
         self._leap_records, self._unknown_death_date = [], []
-        with localeSetting(locale.LC_TIME, "sv_SE.UTF-8"):
+        with localeSetting(locale.LC_TIME, "sv_SE"):
             average["date"] = average["date"]\
                 .apply(self._parse_date)
         average = average[~average['date'].isin(self._unknown_death_date)].reset_index(drop = True)
@@ -114,7 +120,7 @@ class Deaths:
         unknown_2020 = data_2020.iloc[-1:,1:]
         # parse date
         self._leap_records, self._unknown_death_date = [], []
-        with localeSetting(locale.LC_TIME, "sv_SE.UTF-8"):
+        with localeSetting(locale.LC_TIME, "sv_SE"):
             data_2019["date"] = (data_2019["date"] + " 2019").apply(self._parse_date)
             data_2020["date"] = (data_2020["date"] + " 2020").apply(self._parse_date)
         unknown_2019["year"] = 2019
@@ -143,7 +149,7 @@ class Deaths:
         total = data.iloc[-3:,:]
         data = data.iloc[:-6,:]
         self._leap_records, self._unknown_death_date = [], []
-        with localeSetting(locale.LC_TIME, "sv_SE.UTF-8"):
+        with localeSetting(locale.LC_TIME, "sv_SE"):
             data["date"] = (data["date"]+" "+data["year"].apply(lambda x: str(x))).apply(self._parse_date)
         data = data.sort_values(['date'], ascending=[1]).reset_index(drop = True).drop(["year"], axis=1)
         total["date"] = total["year"].apply(lambda x: datetime.strptime(str(x), "%Y"))
@@ -264,7 +270,7 @@ class Deaths:
         data = data.iloc[6:,:].reset_index(drop = True)
         # columns
         self._leap_records, self._unknown_death_date = [], []
-        with localeSetting(locale.LC_TIME, "sv_SE.UTF-8"):
+        with localeSetting(locale.LC_TIME, "sv_SE"):
             dates = (data.iloc[0,1:] + " 2020").apply(self._parse_date).apply(lambda c: c.strftime("%Y-%m-%d")).tolist()
         data = data.iloc[1:,:].reset_index(drop = True)
         data.columns = ["date", *dates]
@@ -274,7 +280,7 @@ class Deaths:
         data = data.iloc[:-1,:].reset_index(drop = True)
         # parse dates
         self._leap_records, self._unknown_death_date = [], []
-        with localeSetting(locale.LC_TIME, "sv_SE.UTF-8"):
+        with localeSetting(locale.LC_TIME, "sv_SE"):
             data["date"] = (data["date"] + " 2020").apply(self._parse_date)
         data = pd.melt(data, id_vars = ['date'],
                        var_name = 'release', value_name = 'deaths', value_vars = dates)
