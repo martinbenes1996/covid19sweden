@@ -2,6 +2,7 @@
 from datetime import datetime
 from io import BytesIO
 import locale
+import re
 import tempfile
 
 import openpyxl as pyxl
@@ -69,23 +70,26 @@ class Deaths:
         data = data.iloc[7:,:-6]
         data.columns = ["date","2015","2016","2017","2018","2019","2020","average"]
         # separate average
-        average = data[["date","average"]]
+        average = data.loc[:,["date","average"]]
         average["average"] = pd.to_numeric(average["average"])
         # wide to long
         data = pd.melt(data, id_vars = ['date'], var_name = 'year', value_name = 'deaths',
                        value_vars = ['2015','2016','2017','2018','2019','2020'])
-        data["deaths"] = pd.to_numeric(data["deaths"])
+        data["deaths"] = data["deaths"].apply(int)
         # separate data and unknown
         data,unk = data[:-1],data[-1:]
         # parse date
         data['date'] = data['date'] + ' ' + data['year']
         self._leap_records, self._unknown_death_date = [], []
-        with localeSetting(locale.LC_TIME, "sv_SE"):
-            data["date"] = data["date"].apply(self._parse_date)
+        data["date"] = data["date"]\
+            .apply(self._swedish_to_english_months)\
+            .apply(self._parse_date)
+        #with localeSetting(locale.LC_TIME, "sv_SE"):
+        #    data["date"] = data["date"].apply(self._parse_date)
         # unknown deaths
         unk = data[data['date'].isin(self._unknown_death_date)]
         unk = unk.drop(['date'], axis=1).reset_index(drop = True)
-        unk["year"] = pd.to_numeric(unk["year"])
+        unk.loc[:,"year"] = pd.to_numeric(unk["year"])
         # process dates
         data = data[~data['date'].isin(self._leap_records)]
         data = data[~data['date'].isin(self._unknown_death_date)]
@@ -93,9 +97,12 @@ class Deaths:
         # average
         average["date"] += " 2020"
         self._leap_records, self._unknown_death_date = [], []
-        with localeSetting(locale.LC_TIME, "sv_SE"):
-            average["date"] = average["date"]\
-                .apply(self._parse_date)
+        average["date"] = average["date"]\
+            .apply(self._swedish_to_english_months)\
+            .apply(self._parse_date)
+        #with localeSetting(locale.LC_TIME, "sv_SE"):
+        #    average["date"] = average["date"]\
+        #        .apply(self._parse_date)
         average = average[~average['date'].isin(self._unknown_death_date)].reset_index(drop = True)
         average["date"] = average["date"].apply(lambda dt: str(dt.strftime("%m-%d")) )
         return data, average, unk
@@ -120,9 +127,15 @@ class Deaths:
         unknown_2020 = data_2020.iloc[-1:,1:]
         # parse date
         self._leap_records, self._unknown_death_date = [], []
-        with localeSetting(locale.LC_TIME, "sv_SE"):
-            data_2019["date"] = (data_2019["date"] + " 2019").apply(self._parse_date)
-            data_2020["date"] = (data_2020["date"] + " 2020").apply(self._parse_date)
+        data["date"] = (data_2019["date"] + " 2019")\
+            .apply(self._swedish_to_english_months)\
+            .apply(self._parse_date)
+        data["date"] = (data_2020["date"] + " 2020")\
+            .apply(self._swedish_to_english_months)\
+            .apply(self._parse_date)
+        #with localeSetting(locale.LC_TIME, "sv_SE"):
+        #    data_2019["date"] = (data_2019["date"] + " 2019").apply(self._parse_date)
+        #    data_2020["date"] = (data_2020["date"] + " 2020").apply(self._parse_date))
         unknown_2019["year"] = 2019
         unknown_2020["year"] = 2020
         # result
@@ -149,8 +162,11 @@ class Deaths:
         total = data.iloc[-3:,:]
         data = data.iloc[:-6,:]
         self._leap_records, self._unknown_death_date = [], []
-        with localeSetting(locale.LC_TIME, "sv_SE"):
-            data["date"] = (data["date"]+" "+data["year"].apply(lambda x: str(x))).apply(self._parse_date)
+        data["date"] = (data["date"]+" "+data["year"].apply(lambda x: str(x)))\
+            .apply(self._swedish_to_english_months)\
+            .apply(self._parse_date)
+        #with localeSetting(locale.LC_TIME, "sv_SE"):
+        #    data["date"] = (data["date"]+" "+data["year"].apply(lambda x: str(x))).apply(self._parse_date)
         data = data.sort_values(['date'], ascending=[1]).reset_index(drop = True).drop(["year"], axis=1)
         total["date"] = total["year"].apply(lambda x: datetime.strptime(str(x), "%Y"))
         total = total.drop(["year"], axis=1).reset_index(drop = True)
@@ -270,8 +286,11 @@ class Deaths:
         data = data.iloc[6:,:].reset_index(drop = True)
         # columns
         self._leap_records, self._unknown_death_date = [], []
-        with localeSetting(locale.LC_TIME, "sv_SE"):
-            dates = (data.iloc[0,1:] + " 2020").apply(self._parse_date).apply(lambda c: c.strftime("%Y-%m-%d")).tolist()
+        dates = (data.iloc[0,1:] + " 2020")\
+            .apply(self._swedish_to_english_months)\
+            .apply(self._parse_date).apply(lambda c: c.strftime("%Y-%m-%d")).tolist()
+        #with localeSetting(locale.LC_TIME, "sv_SE"):
+        #    dates = (data.iloc[0,1:] + " 2020").apply(self._parse_date).apply(lambda c: c.strftime("%Y-%m-%d")).tolist()
         data = data.iloc[1:,:].reset_index(drop = True)
         data.columns = ["date", *dates]
         # unknown
@@ -280,13 +299,32 @@ class Deaths:
         data = data.iloc[:-1,:].reset_index(drop = True)
         # parse dates
         self._leap_records, self._unknown_death_date = [], []
-        with localeSetting(locale.LC_TIME, "sv_SE"):
-            data["date"] = (data["date"] + " 2020").apply(self._parse_date)
+        data["date"] = (data["date"] + " 2020")\
+            .apply(self._swedish_to_english_months)\
+            .apply(self._parse_date)
+        #with localeSetting(locale.LC_TIME, "sv_SE"):
+        #    data["date"] = (data["date"] + " 2020").apply(self._parse_date)
         data = pd.melt(data, id_vars = ['date'],
                        var_name = 'release', value_name = 'deaths', value_vars = dates)
         data["release"] = data["release"].apply(lambda x: datetime.strptime(x, "%Y-%m-%d"))
         
         return data,None,unknown
+    _swedish_months = {
+        "januari": "january",
+        "februari": "february",
+        "mars": "march",
+        "maj": "may",
+        "juni": "june",
+        "juli": "july",
+        "augusti": "august",
+        "oktober": "october"
+    }
+    @classmethod
+    def _swedish_to_english_months(cls, i):
+        s = i
+        for swedish_month,english_month in cls._swedish_months.items():
+            s = s.replace(swedish_month, english_month)
+        return s
 
 __all__ = ["Deaths"]
 
