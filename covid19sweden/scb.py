@@ -64,9 +64,11 @@ class Deaths:
         data.columns = ["date","2015","2016","2017","2018","2019","2020","average"]
         # separate average
         average = data[["date","average"]]
+        average["average"] = pd.to_numeric(average["average"])
         # wide to long
         data = pd.melt(data, id_vars = ['date'], var_name = 'year', value_name = 'deaths',
                        value_vars = ['2015','2016','2017','2018','2019','2020'])
+        data["deaths"] = pd.to_numeric(data["deaths"])
         # separate data and unknown
         data,unk = data[:-1],data[-1:]
         # parse date
@@ -77,6 +79,7 @@ class Deaths:
         # unknown deaths
         unk = data[data['date'].isin(self._unknown_death_date)]
         unk = unk.drop(['date'], axis=1).reset_index(drop = True)
+        unk["year"] = pd.to_numeric(unk["year"])
         # process dates
         data = data[~data['date'].isin(self._leap_records)]
         data = data[~data['date'].isin(self._unknown_death_date)]
@@ -85,9 +88,10 @@ class Deaths:
         average["date"] += " 2020"
         self._leap_records, self._unknown_death_date = [], []
         with localeSetting(locale.LC_TIME, "sv_SE.UTF-8"):
-            average["date"] = average["date"].apply(self._parse_date)
-        average = average[~average['date'].isin(self._unknown_death_date)]
-        
+            average["date"] = average["date"]\
+                .apply(self._parse_date)
+        average = average[~average['date'].isin(self._unknown_death_date)].reset_index(drop = True)
+        average["date"] = average["date"].apply(lambda dt: str(dt.strftime("%m-%d")) )
         return data, average, unk
         
     def country_19to20_day_sex_age(self): # table 2
@@ -109,7 +113,6 @@ class Deaths:
         unknown_2019 = pd.concat([pd.DataFrame(), data_2019.iloc[-1:,1:]])
         unknown_2020 = data_2020.iloc[-1:,1:]
         # parse date
-        self._start_parsing_date()
         self._leap_records, self._unknown_death_date = [], []
         with localeSetting(locale.LC_TIME, "sv_SE.UTF-8"):
             data_2019["date"] = (data_2019["date"] + " 2019").apply(self._parse_date)
@@ -139,7 +142,6 @@ class Deaths:
         unknown = data.iloc[-6:-3,:]
         total = data.iloc[-3:,:]
         data = data.iloc[:-6,:]
-        self._start_parsing_date()
         self._leap_records, self._unknown_death_date = [], []
         with localeSetting(locale.LC_TIME, "sv_SE.UTF-8"):
             data["date"] = (data["date"]+" "+data["year"].apply(lambda x: str(x))).apply(self._parse_date)
@@ -271,12 +273,16 @@ class Deaths:
         unknown = pd.melt(unknown, var_name = 'release', value_name = 'deaths', value_vars = dates)
         data = data.iloc[:-1,:].reset_index(drop = True)
         # parse dates
-        data["date"] = (data["date"] + " 2020").apply(self._parse_date)
+        self._leap_records, self._unknown_death_date = [], []
+        with localeSetting(locale.LC_TIME, "sv_SE.UTF-8"):
+            data["date"] = (data["date"] + " 2020").apply(self._parse_date)
         data = pd.melt(data, id_vars = ['date'],
                        var_name = 'release', value_name = 'deaths', value_vars = dates)
         data["release"] = data["release"].apply(lambda x: datetime.strptime(x, "%Y-%m-%d"))
         
         return data,None,unknown
+
+__all__ = ["Deaths"]
 
 if __name__ == "__main__":
     d = Deaths(offline = True)

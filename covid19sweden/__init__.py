@@ -1,16 +1,17 @@
 # -*- coding: utf-8 -*-
-"""Webscraper for Wikipedia. Uses archive.org if fails scraping.
+"""Webscraper for Swedish data.
  
-Reference: https://en.wikipedia.org/wiki/COVID-19_pandemic_in_Poland
+Reference: https://www.scb.se/hitta-statistik/statistik-efter-amne/befolkning/befolkningens-sammansattning/befolkningsstatistik/pong/tabell-och-diagram/preliminar-statistik-over-doda/
 Todo:
     * caching
 """
 
 import pkg_resources
 from .main import *
+from .scb import *
 from .backup import *
 
 try:
-    __version__ = pkg_resources.get_distribution("covid19_PL_wiki").version
+    __version__ = pkg_resources.get_distribution("covid19sweden").version
 except:
     __version__ = None
