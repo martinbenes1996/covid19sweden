@@ -5,4 +5,5 @@ import sys
 sys.path.append(".")
 
 import covid19sweden
-covid19sweden.commit(overwrite = True)
+#covid19sweden.commit(overwrite = True)
+covid19sweden.fohm()

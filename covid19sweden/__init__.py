@@ -8,7 +8,10 @@ Todo:
 
 import pkg_resources
 from .main import *
+
+from .fohm import *
 from .scb import *
+
 from .backup import *
 
 try:
