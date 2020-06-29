@@ -12,7 +12,7 @@ with open("README.md", "r", encoding="UTF-8") as fh:
 
 setuptools.setup(
   name = 'covid19sweden',
-  version = '0.1.2',
+  version = '0.1.3',
   author = 'Martin Beneš',
   author_email = 'martinbenes1996@gmail.com',
   description = 'Web Scraper for Sweden COVID19 data.',
@@ -21,12 +21,12 @@ setuptools.setup(
   packages=setuptools.find_packages(),
   license='MPL',
   url = 'https://github.com/martinbenes1996/covid19sweden',
-  download_url = 'https://github.com/martinbenes1996/covid19sweden/archive/0.1.2.tar.gz',
+  download_url = 'https://github.com/martinbenes1996/covid19sweden/archive/0.1.3.tar.gz',
   keywords = ['2019-nCov', 'sweden', 'coronavirus', 'covid-19', 'covid-data','covid19-data'],
   install_requires=reqs,
   package_dir={'': '.'},
   classifiers=[
-    'Development Status :: 4 - Beta',
+    'Development Status :: 3 - Alpha',
     'Intended Audience :: Science/Research',
     'Intended Audience :: Developers',
     'Intended Audience :: Other Audience',
