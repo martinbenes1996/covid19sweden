@@ -9,7 +9,7 @@ Todo:
 import pkg_resources
 from .main import *
 
-from .fohm import *
+import .fohm
 from .scb import *
 
 from .backup import *

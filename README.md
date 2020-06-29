@@ -14,7 +14,12 @@ Install from [pip](https://pypi.org/project/covid19sweden/) with
 pip install covid19sweden
 ```
 
-Only function currently is `death()`, fetching the data of deaths. Use it as
+Currently available functions are
+
+* `deaths()` fetching number of deaths
+* `fohm.regions()` and `fohm.municipalities()` fetching Covid-19 statistics in regions and municipalities.
+
+### Deaths
 
 ```python
 import covid19sweden as SWE
@@ -28,9 +33,7 @@ Package is regularly updated. Update with
 pip install --upgrade covid19sweden
 ```
 
-## Parametrization
-
-### Return value
+**Return value**
 
 The first obvious thing is interpretation of return values.
 
@@ -42,7 +45,7 @@ The function returns three values:
 
 To find out interpretation of each value in each parameter configuration, see `scb.py` in the package source code.
 
-### Level
+**Level**
 
 Level is a setting for granularity of data
 
@@ -63,7 +66,7 @@ x3a,x3b,x3u = SWE.deaths(level = 3)
 
 By default the level is 1. Level settings can be implicitly changed in the function.
 
-### Weekly
+**Weekly**
 
 Weekly is a setting of time axis of the data.
 
@@ -83,7 +86,7 @@ Given setting will implicitly change `per_gender_age = True`, even though defaul
 
 Setting of `weekly` can be also implicitly changed if no data is available for given settings.
 
-### Per gender or age
+**Per gender or age**
 
 The settings `per_gender_age` is controlling the deaths to be splitted into groups by gender (M,F) and age groups (mostly 0-64,65-79,80-89,90+).
 
@@ -96,7 +99,7 @@ xa,xb,xu = SWE.deaths(per_gender_age = True)
 
 Setting of `per_gender_age` can be implicitly changed if no data is available for given settings.
 
-### Verbose and alt
+**Verbose and alt**
 
 Not for all the combinations of the parameters the data is available. E.g. for `level = 3`, only daily data without gender and age distinguishing is available. Hence to minimize error rate, implicit parameter changes are introduced.
 
@@ -109,6 +112,24 @@ If the data for given settings is not available, a set of rules is applied to re
 Implicit parameter change is announced on stdout. It can be switched off by setting `verbose = False`.
 
 Sometimes multiple datasets with slight difference (or two conversions) are available. This is announced on stdout. Choosing an alternative data is done with `alt = True`.
+
+### Covid-19 in regions and municipalities
+
+To fetch data in regions and municipalities, type
+
+```python
+import covid19sweden as SWE
+
+regions = SWE.fohm.regions()
+municipalities = SWE.fohm.municipalities()
+```
+
+Only parameter for both functions is optional `filename`,
+that saves the data to csv output file.
+
+```python
+SWE.fohm.municipalities(filename = "output.csv")
+```
 
 ## Commit
 
@@ -130,6 +151,9 @@ Function will try to create the folder. It fails on existing files of the same n
 ```python
 SWE.commit("/var/latest_data", overwrite = True)
 ```
+
+**TODO**:
+* add fohm to commit
 
 ## Contribution
 

@@ -5,5 +5,5 @@ import sys
 sys.path.append(".")
 
 import covid19sweden
-#covid19sweden.commit(overwrite = True)
-covid19sweden.fohm()
+covid19sweden.fohm.regions(filename = "regions.csv")
+covid19sweden.fohm.municipalities(filename = "municipalities.csv")
