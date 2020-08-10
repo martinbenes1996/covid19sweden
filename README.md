@@ -25,7 +25,26 @@ Package is regularly updated. Update with
 pip install --upgrade covid19sweden
 ```
 
+### Covid-19 Deaths
+
+Fetch Covid-19 deaths by weeks using
+
+```python
+import covid19sweden as SE
+
+x = SE.covid_deaths(level = 1)
+```
+
+The data can be acquired split into regions or municipalities using granularity variable `level`
+
+```python
+x_regions = SE.covid_deaths(level = 2)
+x_municipalities = SE.covid_deaths(level = 3)
+```
+
 ### Deaths
+
+Overall deaths in Sweden can be fetched such as
 
 ```python
 import covid19sweden as SWE
