@@ -19,31 +19,21 @@ Currently available functions are
 * `deaths()` fetching number of deaths
 * `fohm.regions()` and `fohm.municipalities()` fetching Covid-19 statistics in regions and municipalities.
 
-### Deaths
-
-```python
-import covid19sweden as SWE
-
-data,data2,unknown = SWE.deaths()
-```
-
 Package is regularly updated. Update with
 
 ```bash
 pip install --upgrade covid19sweden
 ```
 
-**Return value**
+### Deaths
 
-The first obvious thing is interpretation of return values.
+```python
+import covid19sweden as SWE
 
-The function returns three values:
+data = SWE.deaths()
+```
 
-* first return value `data` is the main return value.
-* second return value `data2` is often averaged or total values, where descriptors (age, gender) are marginalized out.
-* third return value `unknown` is deaths, that were for some reason not assigned to weeks / days, for example when the death date is not known.
-
-To find out interpretation of each value in each parameter configuration, see `scb.py` in the package source code.
+The function returns pandas dataframe with the columns being years and rows being deaths of each age and 
 
 **Level**
 

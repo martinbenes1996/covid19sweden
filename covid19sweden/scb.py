@@ -1,335 +1,58 @@
 
-from datetime import datetime
-from io import BytesIO
-import locale
-import re
-import tempfile
+import csv
+from io import StringIO
+import pkg_resources
 
-import openpyxl as pyxl
 import pandas as pd
 import requests
 
-class localeSetting:
-    def __init__(self, a1 = None, a2 = None):
-        if a2 is None:
-            self._category = locale.LC_ALL
-            self._setting = a1
-        else:
-            self._category = a1
-            self._setting = a2
-    def __enter__(self):
-        self._original_locale = locale.getlocale(self._category)
-        for s in [self._setting, self._setting + ".utf8", self._setting + ".UTF-8"]:
-            try:
-                locale.setlocale(self._category, s)
-                break
-            except: pass
-        else:
-            raise locale.Error("unsupported locale setting")
-    def __exit__(self, *args, **kwargs):
-        locale.setlocale(self._category, self._original_locale)
-class Deaths:
-    _url = 'https://www.scb.se/hitta-statistik/statistik-efter-amne/befolkning/befolkningens-sammansattning/befolkningsstatistik/pong/tabell-och-diagram/preliminar-statistik-over-doda/' 
-    def _parse_date(self, d):
-        try:
-            return datetime.strptime(d, "%d %B %Y")
-        except:
-            if d[:2] == "29":
-                self._leap_records.append(d)
-            elif d[:5] == "Okänd":
-                self._unknown_death_date.append(d)
-            else: raise
-            return d
-    def __init__(self):
-        u = requests.get(self._url)
-        self._request_timestamp = datetime.now()
-        fd = BytesIO(u.content)
-        self._wb = pyxl.load_workbook( fd )
-        self._leap_records, self._unknown_death_date = [], []
-        self._filelocation = u.history[0].headers['Location']
-    def get_xlsx_input(self):
-        return self._wb
-    def get_file_location(self):
-        return f'https://www.scb.se{self._filelocation}'
-    def get_file_name(self):
-        return self._filelocation.split('/')[-1]
-    def get_timestamp(self):
-        return self._request_timestamp
-        
-    def country_15to20_day(self): # table 1
-        """Deaths on country level from 2015 to 2020 per day.
-        
-        Returns:
-            data (dataframe): the deaths from each day
-            average (dataframe): the average from each day
-            unk (dataframe): yearly deaths with unknown day
-        """
-        # parse table
-        sheet = self._wb["Tabell 1"]
-        data = pd.DataFrame(sheet.values)
-        data = data.iloc[7:,:-6]
-        data.columns = ["date","2015","2016","2017","2018","2019","2020","average"]
-        # separate average
-        average = data.loc[:,["date","average"]]
-        average["average"] = pd.to_numeric(average["average"])
-        # wide to long
-        data = pd.melt(data, id_vars = ['date'], var_name = 'year', value_name = 'deaths',
-                       value_vars = ['2015','2016','2017','2018','2019','2020'])
-        data["deaths"] = data["deaths"].apply(int)
-        # separate data and unknown
-        data,unk = data[:-1],data[-1:]
-        # parse date
-        data['date'] = data['date'] + ' ' + data['year']
-        self._leap_records, self._unknown_death_date = [], []
-        data["date"] = data["date"]\
-            .apply(self._swedish_to_english_months)\
-            .apply(self._parse_date)
-        #with localeSetting(locale.LC_TIME, "sv_SE"):
-        #    data["date"] = data["date"].apply(self._parse_date)
-        # unknown deaths
-        unk = data[data['date'].isin(self._unknown_death_date)]
-        unk = unk.drop(['date'], axis=1).reset_index(drop = True)
-        unk.loc[:,"year"] = pd.to_numeric(unk["year"])
-        # process dates
-        data = data[~data['date'].isin(self._leap_records)]
-        data = data[~data['date'].isin(self._unknown_death_date)]
-        data = data.drop(["year"], axis=1)
-        # average
-        average["date"] += " 2020"
-        self._leap_records, self._unknown_death_date = [], []
-        average["date"] = average["date"]\
-            .apply(self._swedish_to_english_months)\
-            .apply(self._parse_date)
-        #with localeSetting(locale.LC_TIME, "sv_SE"):
-        #    average["date"] = average["date"]\
-        #        .apply(self._parse_date)
-        average = average[~average['date'].isin(self._unknown_death_date)].reset_index(drop = True)
-        average["date"] = average["date"].apply(lambda dt: str(dt.strftime("%m-%d")) )
-        return data, average, unk
-        
-    def country_19to20_day_sex_age(self): # table 2
-        """Deaths on country level from 2019 to 2020 per sex and age group.
-        
-        Returns:
-            data (dataframe): Daily records from 2019-2020
-            unknown (dataframe): unknown records (not assigned to days)
-        """
-        # parse table
-        sheet = self._wb["Tabell 2"]
-        data = pd.DataFrame(sheet.values)
-        data_2019 = data.iloc[8:,:10]
-        data_2020 = pd.concat([data.iloc[8:,0], data.iloc[8:,10:19]], axis=1)
-        data_2020.columns = data_2019.columns = ["date","total",
-                                                 "M0-64","M65-79","M80-89","M90+",
-                                                 "F0-64","F65-79","F80-89","F90+"]
-        # unknown
-        unknown_2019 = pd.concat([pd.DataFrame(), data_2019.iloc[-1:,1:]])
-        unknown_2020 = data_2020.iloc[-1:,1:]
-        # parse date
-        self._leap_records, self._unknown_death_date = [], []
-        data["date"] = (data_2019["date"] + " 2019")\
-            .apply(self._swedish_to_english_months)\
-            .apply(self._parse_date)
-        data["date"] = (data_2020["date"] + " 2020")\
-            .apply(self._swedish_to_english_months)\
-            .apply(self._parse_date)
-        #with localeSetting(locale.LC_TIME, "sv_SE"):
-        #    data_2019["date"] = (data_2019["date"] + " 2019").apply(self._parse_date)
-        #    data_2020["date"] = (data_2020["date"] + " 2020").apply(self._parse_date))
-        unknown_2019["year"] = 2019
-        unknown_2020["year"] = 2020
-        # result
-        return pd.concat([data_2019, data_2020]), None, pd.concat([unknown_2019, unknown_2020])
-    
-    def county_18to20_day(self): # table 3
-        """Deaths on county level from 2018 to 2020.
-        
-        Returns:
-            data (dataframe): daily county records from 2018 - 2020
-            total (dataframe): total county records from 2018 - 2020
-            unknown (dataframe): unknown records (not assigned to days)
-        """
-        # parse table
-        sheet = self._wb["Tabell 3"]
-        data = pd.DataFrame(sheet.values)
-        data = data.replace({'..': 0})
-        data = data.iloc[9:888,:23]
-        data.columns = ["date","year","SE010","SE021","SE022","SE023","SE091","SE092",
-                        "SE093","SE094","SE041","SE044","SE0A1","SE0A2","SE061","SE024",
-                        "SE025","SE062","SE063","SE071","SE072","SE081","SE082"]
-        # separate unknown, total, unknown
-        unknown = data.iloc[-6:-3,:]
-        total = data.iloc[-3:,:]
-        data = data.iloc[:-6,:]
-        self._leap_records, self._unknown_death_date = [], []
-        data["date"] = (data["date"]+" "+data["year"].apply(lambda x: str(x)))\
-            .apply(self._swedish_to_english_months)\
-            .apply(self._parse_date)
-        #with localeSetting(locale.LC_TIME, "sv_SE"):
-        #    data["date"] = (data["date"]+" "+data["year"].apply(lambda x: str(x))).apply(self._parse_date)
-        data = data.sort_values(['date'], ascending=[1]).reset_index(drop = True).drop(["year"], axis=1)
-        total["date"] = total["year"].apply(lambda x: datetime.strptime(str(x), "%Y"))
-        total = total.drop(["year"], axis=1).reset_index(drop = True)
-        unknown["date"] = unknown["year"].apply(lambda x: datetime.strptime(str(x), "%Y"))
-        unknown = unknown.drop(["year"], axis=1).reset_index(drop = True)
-        
-        return data, total, unknown
-        
-    def municipality_18to20_10days(self): # table 4
-        """Deaths on county level from 2018 to 2020.
-        
-        Returns:
-            data (dataframe): daily municipality records from 2018 - 2020
-            total (dataframe): total municipality records from 2018 - 2020
-            unknown (dataframe): unknown records (not assigned to days)
-        """
-        # parse table
-        sheet = self._wb["Tabell 4"]
-        data = pd.DataFrame(sheet.values)
-        data = data.replace({'..': 0})
-        data = data.iloc[12:,:-3]
-        tendays = [f"{month}-{day+1}"
-                   for month in range(1,13) for day in range(0,21,10) ]
-        data.columns = ["year","code","municipality","total",*tendays,"unknown"]
-        # total/unknown per municipality
-        aggregated = data.loc[:,["year","code","municipality","total","unknown"]]
-        aggregated["date"] = aggregated["year"].apply(lambda x: datetime.strptime(str(x), "%Y"))
-        total = aggregated.drop(["year","unknown"], axis=1)
-        unknown = aggregated.drop(["year","total"], axis=1)
-        # wide to long
-        data = pd.melt(data, id_vars = ['year','code','municipality'],
-                       var_name = 'date', value_name = 'deaths', value_vars = tendays)
-        data['date'] = (data['year'] + "-" + data['date']).apply(lambda x: datetime.strptime(x, "%Y-%m-%d"))
-        data = data.drop("year", axis=1)
-        
-        return data,total,unknown
-    
-    def country_15to20_week_sex(self): # table 5
-        """Deaths on country level from 2015 to 2020 by week by sex.
-        
-        Returns:
-            data (dataframe): daily municipality records from 2018 - 2020
-        """
-        # parse table
-        sheet = self._wb["Tabell 5"]
-        data = pd.DataFrame(sheet.values)
-        data = data.replace({'..': 0})
-        data = data.iloc[11:64,:24].reset_index(drop = True)
-        years = [str(y) for y in range(2015,2021)]
-        data.columns = ["week",*years, "avg", "empty1", *["F"+y for y in [*years,"avg"]], "empty2", *["M"+y for y in [*years,"avg"]]]
-        data = data.drop(["empty1","empty2"], axis=1)
-        
-        return data, None, None
-        
-    def county_15to20_week(self): # table 6
-        """Deaths on county level from 2015 to 2020 by week
-        
-        Returns:
-            data (dataframe): daily municipality records from 2018 - 2020
-            total (dataframe): total municipality records from 2018 - 2020
-            unknown (dataframe): unknown records (not assigned to days)
-        """
-        # parse table
-        sheet = self._wb["Tabell 6"]
-        df = pd.DataFrame(sheet.values)
-        df = df.replace({'..': 0})
-        data = df.iloc[12:66,:45]
-        # parse counties
-        counties = df.iloc[8,3:]
-        counties = counties[~counties.isnull()]
-        # columns
-        county_columns = []
-        for c in counties:
-            county_columns.append(f"avg1519_{c}")
-            county_columns.append(f"2020_{c}")
-        data.columns = ["week","avg1519","2020",*county_columns]
-        # parse unknown
-        unknown = data.iloc[-1:,1:].reset_index(drop = True)
-        data = data.iloc[:-1,:].reset_index(drop = True)
-        # parse total
-        total = data[["week","avg1519","2020"]]
-        data = data.drop(["avg1519","2020"], axis=1)
-        
-        return data, total, unknown
-    
-    def country_15to20_week_age_sex(self): # table 7
-        """Deaths on county level from 2015 to 2020 by week by age by sex.
-        
-        Returns:
-            data (dataframe): weekly records per gender and age group for 2015 - 2019 (average) and in 2020
-            total (dataframe): total weekly deaths (throughout genders and ages) in 2015 - 2019 (average) and 2020
-            unknown (dataframe): unknown records (not assigned to weeks)
-        """
-        # parse table
-        sheet = self._wb["Tabell 7"]
-        data = pd.DataFrame(sheet.values)
-        data = data.replace({'..': 0})
-        data = data.iloc[9:-3,:-3].reset_index(drop = True)
-        # columns
-        age = ["0-64","65-79","80-89","90+"]
-        gender = [g + "_" + a for g in ["M","F"] for a in age]
-        cols1519 = [y + "_" + g for y in ["2015-2019"] for g in gender ]
-        cols20 = [y + "_" + g for y in ["2020"] for g in gender ]
-        data.columns = ["week", "2015-2019", *cols1519, "2020", *cols20]
-        # unknown, total
-        unknown = data.iloc[-1:, 1:]
-        total = data[["week","2015-2019","2020"]]
-        data = data.iloc[:-1,:].drop(["2015-2019","2020"], axis=1)
-
-        return data, total, unknown
-    
-    def country_20_day_release(self): # table 8
-        # parse date
-        sheet = self._wb["Tabell 8"]
-        data = pd.DataFrame(sheet.values)
-        data = data.replace({'..': 0}).replace({None: 0})
-        data = data.iloc[6:,:].reset_index(drop = True)
-        # columns
-        self._leap_records, self._unknown_death_date = [], []
-        dates = (data.iloc[0,1:] + " 2020")\
-            .apply(self._swedish_to_english_months)\
-            .apply(self._parse_date).apply(lambda c: c.strftime("%Y-%m-%d")).tolist()
-        #with localeSetting(locale.LC_TIME, "sv_SE"):
-        #    dates = (data.iloc[0,1:] + " 2020").apply(self._parse_date).apply(lambda c: c.strftime("%Y-%m-%d")).tolist()
-        data = data.iloc[1:,:].reset_index(drop = True)
-        data.columns = ["date", *dates]
-        # unknown
-        unknown = data.iloc[-1:,1:].reset_index(drop = True)
-        unknown = pd.melt(unknown, var_name = 'release', value_name = 'deaths', value_vars = dates)
-        data = data.iloc[:-1,:].reset_index(drop = True)
-        # parse dates
-        self._leap_records, self._unknown_death_date = [], []
-        data["date"] = (data["date"] + " 2020")\
-            .apply(self._swedish_to_english_months)\
-            .apply(self._parse_date)
-        #with localeSetting(locale.LC_TIME, "sv_SE"):
-        #    data["date"] = (data["date"] + " 2020").apply(self._parse_date)
-        data = pd.melt(data, id_vars = ['date'],
-                       var_name = 'release', value_name = 'deaths', value_vars = dates)
-        data["release"] = data["release"].apply(lambda x: datetime.strptime(x, "%Y-%m-%d"))
-        
-        return data,None,unknown
-    _swedish_months = {
-        "januari": "january",
-        "februari": "february",
-        "mars": "march",
-        "maj": "may",
-        "juni": "june",
-        "juli": "july",
-        "augusti": "august",
-        "oktober": "october"
+def _parse_deaths():
+    url = 'http://api.scb.se/OV0104/v1/doris/sv/ssd/START/BE/BE0101/BE0101I/DodaFodelsearK'
+    query = { 
+        "query": [{
+            "code": "Region",
+            "selection": {
+                "filter": "agg:RegionNUTS3_2008",
+                "values": [
+                    "SE110","SE121","SE122","SE123","SE124",
+                    "SE125","SE211","SE212","SE213","SE214",
+                    "SE221","SE224","SE231","SE232","SE311",
+                    "SE312","SE313","SE321","SE322","SE331","SE332"
+                ]
+            }
+        },{
+            "code": "Alder",
+            "selection": {
+                "filter": "agg:Ålder10år",
+                "values": ["-4","5-14","15-24","25-34","35-44","45-54","55-64","65-74","75-84","85-94","95+"]
+            }
+        },{
+            "code": "Kon",
+            "selection": {
+                "filter": "item",
+                "values": ["1","2"]
+            }
+        }],
+        "response": {"format": "csv"}
     }
-    @classmethod
-    def _swedish_to_english_months(cls, i):
-        s = i
-        for swedish_month,english_month in cls._swedish_months.items():
-            s = s.replace(swedish_month, english_month)
-        return s
+    # get data
+    res = requests.post(url, json = query)
+    x = pd.read_csv( StringIO(res.text) )
+    # parse data
+    x.columns = ["region","age","sex"] + [str(y) for y in range(1968,2020)]
+    x.sex = x.sex.apply(lambda i: "F" if i == "kvinnor" else "M")
+    x["region_code"] = x.region.apply(lambda i: i.split(" ")[0])
+    x["region_name"] = x.region.apply(lambda i: " ".join(i.split(" ")[1:]) )
+    x.drop("region", axis = 1, inplace = True)
+    x.age = x.age.apply(lambda i: i[:-3])
+    x = x[["region_code","region_name","age","sex"] + [str(y) for y in range(1968,2020)]]
+    # save
+    x.to_csv(pkg_resources.resource_filename(__name__, "data/deaths.csv"), index = False)
+    return x
 
-__all__ = ["Deaths"]
+def deaths(offline = True):
+    x = _parse_deaths()
+    return x
 
-if __name__ == "__main__":
-    d = Deaths(offline = True)
-    data = d.country_15to20_week_sex()
-    print(data)
+__all__ = ["deaths"]
     

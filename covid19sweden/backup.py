@@ -4,11 +4,10 @@ import json
 import logging
 import os
 from pathlib import Path
-import shutil
 
 import pandas as pd
 
-from .scb import Deaths
+from . import scb
 
 _log = logging.getLogger(__name__)
 
@@ -61,32 +60,15 @@ def commit(name = None, overwrite = False):
     # download
     _log.info("Fetching data.")
     try:
-        d = Deaths()
+        d = scb.deaths()
     except Exception as e:
         _log.error(f"Fetching of input data failed: {e}")
         return
-    
     _log.info("Calling parser methods, saving their outputs.")
+    
     # === save ===
-    try:
-        # raw excel input
-        if not overwrite and os.path.exists(folder / "raw.xlsx"):
-            _log.error(f"File {folder / 'raw.xlsx'} exists! Set overwrite = True to proceed.")
-            raise OverwriteError
-        d.get_xlsx_input().save(folder / "raw.xlsx")
-        # output of each method
-        _run_method(d.country_15to20_day, folder / "country_15to20_day", overwrite)
-        _run_method(d.country_19to20_day_sex_age, folder / "country_19to20_day_sex_age", overwrite)
-        _run_method(d.county_18to20_day, folder / "county_18to20_day", overwrite)
-        _run_method(d.municipality_18to20_10days, folder / "municipality_18to20_10days", overwrite)
-        _run_method(d.country_15to20_week_sex, folder / "country_15to20_week_sex", overwrite)
-        _run_method(d.county_15to20_week, folder / "county_15to20_week", overwrite)
-        _run_method(d.country_15to20_week_age_sex, folder / "country_15to20_week_age_sex", overwrite)
-        _run_method(d.country_20_day_release, folder / "country_20_day_release", overwrite)
-        # write metadata
-        _write_meta(d, folder / "meta.json", overwrite)
-    except OverwriteError:
-        return
+    d.to_csv(folder / "deaths.csv", index = False)
+    
     _log.info("All done.")
     
 __all__ = ["commit"]

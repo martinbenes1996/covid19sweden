@@ -1,12 +1,9 @@
 
 from datetime import datetime,timedelta
 from io import BytesIO
+import pkg_resources
 import tempfile
 
-from bs4 import BeautifulSoup
-from waybackmachine import WaybackMachine
-
-import openpyxl as pyxl
 import pandas as pd
 import requests
 
@@ -49,9 +46,17 @@ def municipalities(filename = None):
 def regions(filename = None):
     x = FOHM()
     regions = x.read_regions()
+    nuts3 = {
+        'Blekinge': 'SE221','Dalarna': 'SE312','Gotland': 'SE214','Gävleborg': 'SE313','Halland': 'SE231',
+        'Jämtland Härjedalen': 'SE322','Jönköping': 'SE211','Kalmar': 'SE213','Kronoberg': 'SE212',
+        'Norrbotten': 'SE332','Skåne': 'SE224','Stockholm': 'SE110','Sörmland': 'SE122','Uppsala': 'SE121',
+        'Värmland': 'SE311','Västerbotten': 'SE331','Västernorrland': 'SE321','Västmanland': 'SE125',
+        'Västra Götaland': 'SE232','Örebro': 'SE124','Östergötland': 'SE124'}
+    regions["NUTS_ID"] = regions.region.apply(lambda r: nuts3[r])
     if filename:
         regions.to_csv(filename, index = False)
+        
     return regions
-    
 
+    
 __all__ = ["regions","municipalities"]
