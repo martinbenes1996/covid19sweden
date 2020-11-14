@@ -12,8 +12,8 @@ def deaths(offline = True):
 def covid_deaths(level = 2):
     if level in {1,2}:
         x = fohm.regions()
-        x = x[["week","NUTS_ID","deaths","confirmed","icu","confirmed_newly_per100K"]]
-        x.columns = ["week", "region", "deaths", "confirmed", "icu", "confirmed_per100k"]
+        x = x[["week","NUTS_ID","region","deaths","confirmed","icu","confirmed_newly_per100K"]]
+        x.columns = ["week", "region", "region_name", "deaths", "confirmed", "icu", "confirmed_per100k"]
         if level == 2:
             return x
         else:
