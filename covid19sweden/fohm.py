@@ -16,7 +16,7 @@ class FOHM:
         # load
         if not self._response:
             self._response = requests.get(self._url)
-        data = pd.read_excel(BytesIO(self._response.content),'Veckodata Kommun_stadsdel')
+        data = pd.read_excel(BytesIO(self._response.content),'Veckodata Kommun_stadsdel', engine='openpyxl')
         # columns
         data.columns = ["week","municipality_code","municipality","district",
                         "municipality_district","confirmed_total_per10K",
@@ -28,9 +28,9 @@ class FOHM:
         # load
         if not self._response:
             self._response = requests.get(self._url)
-        data = pd.read_excel(BytesIO(self._response.content),'Veckodata Region')
+        data = pd.read_excel(BytesIO(self._response.content),'Veckodata Region', engine='openpyxl')
         # columns
-        data.columns = ["week","region","confirmed","confirmed_total",
+        data.columns = ["year","week","region","confirmed","confirmed_total",
                         "icu","icu_total","deaths","deaths_total",
                         "confirmed_newly_per100K","confirmed_total_per100K"]
         # values
