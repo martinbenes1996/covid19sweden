@@ -51,7 +51,7 @@ def regions(filename = None):
         'Jämtland Härjedalen': 'SE322','Jönköping': 'SE211','Kalmar': 'SE213','Kronoberg': 'SE212',
         'Norrbotten': 'SE332','Skåne': 'SE224','Stockholm': 'SE110','Sörmland': 'SE122','Uppsala': 'SE121',
         'Värmland': 'SE311','Västerbotten': 'SE331','Västernorrland': 'SE321','Västmanland': 'SE125',
-        'Västra Götaland': 'SE232','Örebro': 'SE124','Östergötland': 'SE124'}
+        'Västra Götaland': 'SE232','Örebro': 'SE124','Östergötland': 'SE123'}
     regions["NUTS_ID"] = regions.region.apply(lambda r: nuts3[r])
     if filename:
         regions.to_csv(filename, index = False)
